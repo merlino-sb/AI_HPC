@@ -1,0 +1,166 @@
+---
+title: "AI and Supercomputing Are Powering the Next Wave of Breakthrough Science – But at What Cost?"
+author: "S. Bianchini, A. Geuna, F. Shermatov "
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+    code_folding: show
+  pdf_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 10,
+  fig.height = 6
+)
+```
+
+# Load Libraries
+
+```{r libraries}
+library(tidyverse)
+library(glue)
+library(broom)
+library(sandwich)
+library(lmtest)
+library(stargazer)
+library(pscl)
+```
+
+# Load Data
+
+```{r load-data}
+regression_data <- read.csv("regression_data.csv")
+```
+
+# Data Preparation
+
+```{r prep-data}
+# Define subject and affiliation variables
+subject_vars <- grep("^subj_", names(regression_data), value = TRUE)
+
+affil_vars <- grep("^affil_", names(regression_data), value = TRUE)
+```
+
+# Main Econometric Models
+
+## Model 1: Base Specification
+
+```{r model-1}
+model_formula_1 <- as.formula(glue(
+  "new_word_d ~ hpc_dummy + AI_dummy + I(AI_dummy * hpc_dummy) + ",
+  "log(author_count + 1) + int_collab + log(prior_cites + 1) + ",
+  "affiltype_University + affiltype_Government + affiltype_Industry + ",
+  "affiltype_Hospital + affiltype_Other + ",
+  "{paste(subject_vars, collapse = ' + ')} + ",
+  "{paste(affil_vars, collapse = ' + ')} + factor(year)"
+))
+
+model_1 <- glm(
+  model_formula_1,
+  data = regression_data,
+  family = binomial(link = "probit")
+)
+
+# Cluster-robust standard errors
+clustered_se_1 <- vcovCL(model_1, cluster = ~ publicationName)
+model_1_se <- coeftest(model_1, vcov = clustered_se_1)
+```
+
+## Model 2: With Journal Quality
+
+```{r model-2}
+model_formula_2 <- as.formula(glue(
+  "new_word_d ~ hpc_dummy + AI_dummy + I(AI_dummy * hpc_dummy) + ",
+  "log(author_count + 1) + int_collab + log(prior_cites + 1) + sjr_2024 + ",
+  "affiltype_University + affiltype_Government + affiltype_Industry + ",
+  "affiltype_Hospital + affiltype_Other + ",
+  "{paste(subject_vars, collapse = ' + ')} + ",
+  "{paste(affil_vars, collapse = ' + ')} + factor(year)"
+))
+
+model_2 <- glm(
+  model_formula_2,
+  data = regression_data,
+  family = binomial(link = "probit")
+)
+
+# Cluster-robust standard errors
+clustered_se_2 <- vcovCL(model_2, cluster = ~ publicationName)
+model_2_se <- coeftest(model_2, vcov = clustered_se_2)
+```
+
+## Model 3: Full Specification with University Ranking
+
+```{r model-3}
+model_formula_3 <- as.formula(glue(
+  "new_word_d ~ hpc_dummy + AI_dummy + I(AI_dummy * hpc_dummy) + ",
+  "log(author_count + 1) + int_collab + log(prior_cites + 1) + sjr_2024 + top_shanghai + ",
+  "affiltype_University + affiltype_Government + affiltype_Industry + ",
+  "affiltype_Hospital + affiltype_Other + ",
+  "{paste(subject_vars, collapse = ' + ')} + ",
+  "{paste(affil_vars, collapse = ' + ')} + factor(year)"
+))
+
+model_3 <- glm(
+  model_formula_3,
+  data = regression_data,
+  family = binomial(link = "probit")
+)
+
+# Cluster-robust standard errors
+clustered_se_3 <- vcovCL(model_3, cluster = ~ publicationName)
+model_3_se <- coeftest(model_3, vcov = clustered_se_3)
+```
+
+# Model Comparison
+
+## Pseudo R-squared
+
+```{r pseudo-r2}
+cat("Model 1 Pseudo R²:\n")
+print(pR2(model_1))
+
+cat("\nModel 2 Pseudo R²:\n")
+print(pR2(model_2))
+
+cat("\nModel 3 Pseudo R²:\n")
+print(pR2(model_3))
+```
+
+## Regression Table (Standard Errors)
+
+```{r table-standard, results='asis'}
+stargazer(
+  model_1, model_2, model_3,
+  omit = c("subj_", "factor\\(year\\)", "affil_"),
+  column.labels = c("Base", "With SJR", "Full"),
+  type = "text",
+  title = "Probit Models: Innovation and Computing Infrastructure"
+)
+```
+
+## Regression Table (Cluster-Robust Standard Errors)
+
+```{r table-robust, results='asis'}
+stargazer(
+  model_1_se, model_2_se, model_3_se,
+  omit = c("subj_", "factor\\(year\\)", "affil_"),
+  column.labels = c("Base", "With SJR", "Full"),
+  type = "text",
+  title = "Probit Models with Cluster-Robust Standard Errors"
+)
+```
+
+# Session Information
+
+```{r session-info}
+sessionInfo()
+```
