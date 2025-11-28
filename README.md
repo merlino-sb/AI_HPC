@@ -2,7 +2,7 @@
 
 This repository contains all code, data-processing scripts, and analysis notebooks used in the paper:
 
-**AI and Supercomputing are Powering the Next Wave of Breakthrough Science – But at What Cost?**
+**[AI and Supercomputing are Powering the Next Wave of Breakthrough Science – But at What Cost?](https://arxiv.org/pdf/2511.12686)**
 
 Authors: Bianchini, Geuna, Shermatov (2025)
 
